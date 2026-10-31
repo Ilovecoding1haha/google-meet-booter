@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Meet Botter</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0b0b0c;color:#fff;font:14px system-ui,sans-serif;padding:26px;max-width:900px}
+h1{font-size:19px;margin:0 0 16px}
+label{display:block;font-size:12px;color:#8a8a8e;margin:12px 0 5px;text-transform:uppercase;letter-spacing:.5px}
+input,select,textarea{width:100%;background:#1c1c1e;border:1px solid #333;color:#fff;border-radius:8px;padding:10px;font:14px inherit}
+textarea{resize:vertical;min-height:52px}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row>div{flex:1;min-width:150px}
+button{background:#0a84ff;border:0;color:#fff;border-radius:9px;padding:12px 26px;font-weight:600;cursor:pointer;font-size:14px}
+button.stop{background:#ff453a}
+#bar{display:flex;gap:12px;align-items:center;margin-top:18px}
+#stat{color:#8a8a8e;font-size:12px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-top:20px}
+.card{background:#151517;border:1px solid #262628;border-radius:8px;padding:9px 11px;font-size:12px}
+.card b{display:block;font-size:13px;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card span{color:#636366;font:11px ui-monospace}
+.card.on{border-color:#30d158}
+.card.on span{color:#30d158}
+.card.bad{border-color:#ff453a}
+.card.bad span{color:#ff453a}
+</style>
+</head>
+<body>
+<h1>Meet Botter</h1>
+
+<div class="row">
+  <div><label>Meet code</label><input id="code" placeholder="abc-defg-hij" autocomplete="off"></div>
+  <div><label>Preset</label><select id="preset"></select></div>
+</div>
+
+<div class="row">
+  <div><label>Bots</label><input id="count" type="number" value="8" min="1" max="40"></div>
+  <div><label>Hold (sec)</label><input id="hold" type="number" value="45" min="15" max="270"></div>
+  <div><label>Chat spam (optional)</label><input id="msg" placeholder="join abc-defg-hij"></div>
+</div>
+
+<div id="bar">
+  <button id="go">Start</button>
+  <span id="stat">idle</span>
+</div>
+<div id="grid"></div>
+
+<script>
+const P = {
+  "Corporate (50)": ["James Whitfield","Sarah Chen","Robert Delgado","Priya Raman","Daniel Okafor","Emily Novak","Thomas Berger","Aisha Rahman","Kevin Doyle","Laura Kim","Marcus Webb","Elena Petrova","Brian Foster","Nadia Haddad","Paul Stanton","Rachel Vance","Victor Alvarez","Grace Lin","Simon Hartley","Diana Moreau","Andrew Blake","Fatima Zayed","Gregory Nash","Julia Sandoval","Patrick Quinn","Mei Tanaka","Oliver Grant","Carmen Ruiz","Derek Holmes","Ingrid Larsen","Samuel Adeyemi","Christine Park","Nathan Reed","Yara Khalil","Philip Boyer","Alice Fontaine","Marco Ricci","Hannah Weiss","Trevor Banks","Sofia Marchetti","Douglas Chan","Bianca Silva","Edward Nolan","Leila Aziz","Colin Mercer","Renee Dubois","Arthur Lindgren","Monica Patel","Felix Braun","Tanya Volkova"],
+  "Students (50)": ["Liam Parker","Zoe Martinez","Ethan Brooks","Maya Singh","Noah Bennett","Chloe Russo","Aiden Walsh","Layla Ahmed","Caleb Turner","Nina Kowalski","Jacob Reyes","Amara Obi","Lucas Meyer","Sophie Tran","Owen Fletcher","Isabella Costa","Ryan Mahoney","Hana Sato","Tyler Grant","Farah Siddiqui","Dylan Cross","Elise Moreau","Connor Hayes","Anika Rao","Bradley Knox","Jada Wilkins","Mitchell Lowe","Selin Aydin","Zach Perry","Riya Nair","Cole Brennan","Amelie Girard","Devon Marsh","Yuki Nakamura","Shane Duffy","Priyanka Bose","Alec Winters","Camila Vargas","Garrett Poole","Nadine Haddad","Wesley Ford","Talia Rosen","Bryce Molina","Esme Laurent","Kieran Doyle","Linh Pham","Dustin Bauer","Marta Nowak","Reece Holloway","Anya Petrova"],
+  "Chaos (50)": ["Big Chungus","xX_DarkLord_Xx","Not A Bot","Definitely Real","Kevin From IT","Loading...","Test Test","Mr Worldwide","Pizza Guy","CEO of Nothing","Anonymous","Your Boss","The Intern","Sandwich Enthusiast","404 Not Found","That One Guy","Bored Employee","Random Stranger","Dave","Steve","Actual Human","Totally Legit","Ghost of Steve Jobs","Windows Update","ChatGPT","Human Person","Certified Idiot","Some Guy","Nobody Important","Error 404","Mute Me Maybe","Caffeine Machine","Sleep Deprived","Wi-Fi Thief","Sent From Phone","Just Here","Lurking","AFK","Brb","Mic Check","Can You Hear Me","Sorry Late","Joining Late","Redacted","Classified","Unpaid Intern","Slightly Confused","Office Chair","Plant In Corner","Quick Question Guy"],
+  "Official (50)": ["Alex Morgan - IT Support","Jordan Reyes - Facilities","Priya Shah - Compliance","Kevin Boateng - Security","Rachel Doyle - HR","Tom Vasquez - Legal","Nina Bergstrom - Finance","Omar Farouk - Audit","Lisa Chen - Procurement","David Osei - Operations","Anna Kovac - Training","Mark Ellison - Infrastructure","Sofia Ricci - Records","Peter Nwosu - Logistics","Hannah Bloom - Payroll","Victor Salas - Network Ops","Emma Lindqvist - QA","Yusuf Demir - Vendors","Clara Mensah - Onboarding","Ian McAllister - Desktop","Tara Bhatt - Policy","Leo Fontaine - Helpdesk","Grace Amoah - Benefits","Sean Corrigan - Data","Mira Solberg - Compliance II","Adam Kessler - Assets","Rania Aziz - Support","Neil Fraser - Telecom","Dana Whitmore - Risk","Kofi Mensah - Field","Elise Duval - Scheduling","Hugo Brandt - Maintenance","Priyanka Iyer - Governance","Owen Hart - Tier 2","Bianca Rocha - Billing","Colin Reid - Escalations","Anya Belova - Licensing","Derek Lam - Rollout","Fatima Noor - Access","Grant Foley - Continuity","Mei Wong - Provisioning","Paul Serrano - Security II","Lena Fischer - Reporting","Amir Haddad - Intake","Ruth Adler - Archive","Victor Nunes - Dispatch","Sally Kim - Front Desk","Marco Bellini - Facilities II","Tess O'Hara - Comms"]
+};
+
+const $ = i => document.getElementById(i);
+let running = false, alive = new Map(), idx = 0;
+
+for (const k in P) { const o = document.createElement('option'); o.textContent = k; $('preset').appendChild(o); }
+
+function card(name) {
+  const d = document.createElement('div');
+  d.className = 'card';
+  d.innerHTML = '<b></b><span>queued</span>';
+  d.querySelector('b').textContent = name;
+  $('grid').appendChild(d);
+  return d;
+}
+
+async function spawn(name) {
+  if (!running) return;
+  const el = card(name);
+  const code = $('code').value.trim().toLowerCase();
+  const q = new URLSearchParams({ code, name, msg: $('msg').value, hold: $('hold').value });
+  el.classList.add('on');
+  el.querySelector('span').textContent = 'joining';
+  try {
+    const r = await fetch('/api/bot?' + q).then(x => x.json());
+    el.querySelector('span').textContent = r.joined ? 'joined' : (r.ok ? 'lobby' : 'fail');
+    if (!r.ok) el.classList.add('bad');
+  } catch {
+    el.classList.add('bad');
+    el.querySelector('span').textContent = 'error';
+  }
+  alive.delete(name);
+  if (running) setTimeout(() => { el.remove(); spawn(name); }, 1200);
+  tick();
+}
+
+function tick() {
+  $('stat').textContent = running ? `${alive.size} running / ${$('count').value} target` : 'idle';
+}
+
+function fill() {
+  const list = P[$('preset').value];
+  $('grid').innerHTML = '';
+  idx = 0;
+  for (let i = 0; i < Number($('count').value); i++) {
+    card(list[i % list.length]);
+  }
+}
+
+$('go').onclick = () => {
+  if (running) { running = false; $('go').textContent = 'Start'; $('go').classList.remove('stop'); $('stat').textContent = 'stopping…'; return; }
+  if (!$('code').value.trim()) { $('stat').textContent = 'enter a code'; return; }
+  running = true;
+  $('go').textContent = 'Stop';
+  $('go').classList.add('stop');
+  $('grid').innerHTML = '';
+  const list = P[$('preset').value];
+  const n = Number($('count').value);
+  const cap = Math.min(n, 10);
+  for (let i = 0; i < n; i++) {
+    const name = list[i % list.length];
+    setTimeout(() => { if (running && alive.size < cap) { alive.set(name, 1); spawn(name); } }, i * 900);
+  }
+  tick();
+};
+
+$('preset').onchange = fill;
+fill();
+</script>
+</body>
+</html>

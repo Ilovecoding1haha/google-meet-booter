@@ -1,0 +1,9 @@
+{
+  "name": "meet-botter",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "playwright-core": "1.47.2",
+    "@sparticuz/chromium": "127.0.0"
+  }
+}

@@ -7,12 +7,12 @@
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b0b0c;color:#fff;font:14px system-ui,sans-serif;padding:26px;max-width:900px}
-h1{font-size:19px;margin:0 0 16px}
+h1{font-size:19px;margin:0 0 4px}
+h1 a{color:#0a84ff;font-size:12px;font-weight:400;text-decoration:none;margin-left:10px}
 label{display:block;font-size:12px;color:#8a8a8e;margin:12px 0 5px;text-transform:uppercase;letter-spacing:.5px}
-input,select,textarea{width:100%;background:#1c1c1e;border:1px solid #333;color:#fff;border-radius:8px;padding:10px;font:14px inherit}
-textarea{resize:vertical;min-height:52px}
+input,select{width:100%;background:#1c1c1e;border:1px solid #333;color:#fff;border-radius:8px;padding:10px;font:14px inherit}
 .row{display:flex;gap:12px;flex-wrap:wrap}
-.row>div{flex:1;min-width:150px}
+.row>div{flex:1;min-width:130px}
 button{background:#0a84ff;border:0;color:#fff;border-radius:9px;padding:12px 26px;font-weight:600;cursor:pointer;font-size:14px}
 button.stop{background:#ff453a}
 #bar{display:flex;gap:12px;align-items:center;margin-top:18px}
@@ -28,7 +28,7 @@ button.stop{background:#ff453a}
 </style>
 </head>
 <body>
-<h1>Meet Botter</h1>
+<h1>Meet Botter <a href="/kill.html">kill switch →</a></h1>
 
 <div class="row">
   <div><label>Meet code</label><input id="code" placeholder="abc-defg-hij" autocomplete="off"></div>
@@ -37,7 +37,8 @@ button.stop{background:#ff453a}
 
 <div class="row">
   <div><label>Bots</label><input id="count" type="number" value="8" min="1" max="40"></div>
-  <div><label>Hold (sec)</label><input id="hold" type="number" value="45" min="15" max="270"></div>
+  <div><label>Concurrent</label><input id="cap" type="number" value="8" min="1" max="20"></div>
+  <div><label>Hold (sec)</label><input id="hold" type="number" value="30" min="15" max="55"></div>
   <div><label>Chat spam (optional)</label><input id="msg" placeholder="join abc-defg-hij"></div>
 </div>
 
@@ -56,7 +57,7 @@ const P = {
 };
 
 const $ = i => document.getElementById(i);
-let running = false, alive = new Map(), idx = 0;
+let running = false, active = 0, queue = [];
 
 for (const k in P) { const o = document.createElement('option'); o.textContent = k; $('preset').appendChild(o); }
 
@@ -69,58 +70,72 @@ function card(name) {
   return d;
 }
 
-async function spawn(name) {
-  if (!running) return;
-  const el = card(name);
+function tick() {
+  $('stat').textContent = running
+    ? active + ' live · ' + queue.length + ' queued · ' + $('count').value + ' target'
+    : 'idle';
+}
+
+function pump() {
+  const cap = Math.max(1, Math.min(Number($('cap').value) || 8, 20));
+  while (running && active < cap && queue.length) {
+    const job = queue.shift();
+    run(job.name, job.el);
+  }
+  tick();
+}
+
+async function run(name, el) {
+  active++;
   const code = $('code').value.trim().toLowerCase();
   const q = new URLSearchParams({ code, name, msg: $('msg').value, hold: $('hold').value });
   el.classList.add('on');
   el.querySelector('span').textContent = 'joining';
   try {
     const r = await fetch('/api/bot?' + q).then(x => x.json());
-    el.querySelector('span').textContent = r.joined ? 'joined' : (r.ok ? 'lobby' : 'fail');
-    if (!r.ok) el.classList.add('bad');
+    el.querySelector('span').textContent = r.ok ? 'in call' : (r.stage || 'fail');
+    el.classList.toggle('bad', !r.ok);
   } catch {
     el.classList.add('bad');
-    el.querySelector('span').textContent = 'error';
+    el.querySelector('span').textContent = 'network';
   }
-  alive.delete(name);
-  if (running) setTimeout(() => { el.remove(); spawn(name); }, 1200);
-  tick();
-}
-
-function tick() {
-  $('stat').textContent = running ? `${alive.size} running / ${$('count').value} target` : 'idle';
-}
-
-function fill() {
-  const list = P[$('preset').value];
-  $('grid').innerHTML = '';
-  idx = 0;
-  for (let i = 0; i < Number($('count').value); i++) {
-    card(list[i % list.length]);
+  active--;
+  if (running) {
+    el.remove();
+    queue.push({ name, el: card(name) });
   }
+  pump();
 }
 
 $('go').onclick = () => {
-  if (running) { running = false; $('go').textContent = 'Start'; $('go').classList.remove('stop'); $('stat').textContent = 'stopping…'; return; }
+  if (running) {
+    running = false;
+    queue = [];
+    $('go').textContent = 'Start';
+    $('go').classList.remove('stop');
+    const iv = setInterval(() => {
+      $('stat').textContent = active ? 'stopping — ' + active + ' still finishing' : 'idle';
+      if (!active) clearInterval(iv);
+    }, 500);
+    return;
+  }
   if (!$('code').value.trim()) { $('stat').textContent = 'enter a code'; return; }
   running = true;
+  active = 0;
+  queue = [];
   $('go').textContent = 'Stop';
   $('go').classList.add('stop');
   $('grid').innerHTML = '';
   const list = P[$('preset').value];
   const n = Number($('count').value);
-  const cap = Math.min(n, 10);
   for (let i = 0; i < n; i++) {
     const name = list[i % list.length];
-    setTimeout(() => { if (running && alive.size < cap) { alive.set(name, 1); spawn(name); } }, i * 900);
+    queue.push({ name, el: card(name) });
   }
-  tick();
+  pump();
 };
 
-$('preset').onchange = fill;
-fill();
+$('preset').onchange = () => { if (!running) $('grid').innerHTML = ''; };
 </script>
 </body>
 </html>

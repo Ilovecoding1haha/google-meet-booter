@@ -1,0 +1,39 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kill Switch</title><style>
+*{box-sizing:border-box}
+body{margin:0;background:#0b0b0c;color:#fff;font:14px system-ui;padding:28px;max-width:640px}
+h1{font-size:19px;margin:0 0 4px}
+p{color:#8a8a8e;font-size:12px;margin:0 0 18px}
+input{width:100%;background:#1c1c1e;border:1px solid #333;color:#fff;border-radius:8px;padding:11px;font:14px ui-monospace;margin-bottom:12px}
+button{border:0;border-radius:9px;padding:12px 20px;font-weight:700;cursor:pointer;color:#fff;font-size:14px}
+#kill{background:#ff453a;width:100%;padding:18px;font-size:16px}
+#mk{background:#2c2c2e}
+pre{background:#111;border:1px solid #262628;border-radius:8px;padding:12px;font:11px ui-monospace;color:#30d158;white-space:pre-wrap;min-height:40px}
+</style></head><body>
+<h1>Kill switch</h1>
+<p>Only works on spaces your token owns. Create one below, send that link out, then end the call whenever you want.</p>
+<input id="c" placeholder="abc-defg-hij">
+<button id="kill">END CALL FOR EVERYONE</button>
+<div style="height:10px"></div>
+<button id="mk">Create owned room</button>
+<pre id="o">idle</pre>
+<script>
+const $ = i => document.getElementById(i);
+$('c').value = new URLSearchParams(location.search).get('c') || '';
+const log = o => $('o').textContent = typeof o === 'string' ? o : JSON.stringify(o, null, 2);
+
+$('kill').onclick = async () => {
+  const code = $('c').value.trim().toLowerCase();
+  if (!code) return log('no code');
+  log('ending…');
+  const r = await fetch('/api/end?code=' + encodeURIComponent(code)).then(x => x.json());
+  log(r.ok ? 'ENDED. space=' + r.space + ' wasLive=' + r.wasLive : r);
+};
+
+$('mk').onclick = async () => {
+  const r = await fetch('/api/make').then(x => x.json());
+  if (r.code) { $('c').value = r.code; log('owned room: https://meet.google.com/' + r.code); }
+  else log(r);
+};
+</script></body></html>
